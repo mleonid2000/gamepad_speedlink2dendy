@@ -1,0 +1,53 @@
+#!/bin/bash
+
+####################################################################
+# Fuse high byte:
+# 0xc9 = 1 1 0 0   1 0 0 1 <-- BOOTRST (boot reset vector at 0x0000)
+#        ^ ^ ^ ^   ^ ^ ^------ BOOTSZ0
+#        | | | |   | +-------- BOOTSZ1
+#        | | | |   + --------- EESAVE (don't preserve EEPROM over chip erase)
+#        | | | +-------------- CKOPT (full output swing)
+#        | | +---------------- SPIEN (allow serial programming)
+#        | +------------------ WDTON (WDT not always on)
+#        +-------------------- RSTDISBL (reset pin is enabled)
+# Fuse low byte:
+# 0x9f = 1 0 0 1   1 1 1 1
+#        ^ ^ \ /   \--+--/
+#        | |  |       +------- CKSEL 3..0 (external >8M crystal)
+#        | |  +--------------- SUT 1..0 (crystal osc, BOD enabled)
+#        | +------------------ BODEN (BrownOut Detector enabled)
+#        +-------------------- BODLEVEL (2.7V)
+####################################################################
+
+#Internal clock generator 8 MHz
+#HEXFILE=gamepad2nes_i8Mhz.hex
+#HFuse=D9
+#LFuse=E4
+
+#External clock generator 16 Mhz
+HEXFILE=gamepad_speedlink2dendy_e16Mhz_new.hex
+#HEXFILE=gamepad2nes_e16Mhz_w_delay.hex
+#HEXFILE=gamepad2nes_e16Mhz_wo_delay.hex
+HFuse=0xC9
+LFuse=0x9F
+
+#Most safe clock frequency
+USBASP='avrdude -p m8 -P usb -c usbasp -B 10 -F'
+
+# Run script with root privileges
+if [ "$USER" != "root" ]
+then sudo $0;
+fi
+
+#if password not entered then exit
+if [ "$USER" != "root" ]
+then exit 0
+fi
+
+echo $HEXFILE
+
+$USBASP -Uflash:w:$HEXFILE
+
+$USBASP -Uhfuse:w:$HFuse:m -Ulfuse:w:$LFuse:m
+
+echo $HEXFILE was used

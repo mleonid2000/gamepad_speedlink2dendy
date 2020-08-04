@@ -8,25 +8,60 @@
 /* Конфигурация портов ATmega8                                               */
 /*===========================================================================*/
 
-//#define F_CPU 8000000L #Задается в 'makefile'
+/* Задается в 'makefile' */
+//#define F_CPU 8000000L
+
+/* Порты и пины */
+#define PAD_Clock_PORT		PIND
+#define PAD_Latch_PORT		PIND
+#define PAD_Data_PORT		PIND
+
+#define INPUT_RIGHT_PORT	PINC
+#define INPUT_LEFT_PORT		PINC
+#define INPUT_DOWN_PORT		PINC
+#define INPUT_UP_PORT		PINC
+
+#define INPUT_START_PORT	PIND
+#define INPUT_SELECT_PORT	PIND
+#define INPUT_B_PORT		PIND
+#define INPUT_A_PORT		PINB
+#define INPUT_TB_PORT		PINB
+#define INPUT_TA_PORT		PINB
+
+#define PAD_Clock_PIN		PD2
+#define PAD_Latch_PIN		PD3
+#define PAD_Data_PIN		PD0
+
+#define INPUT_RIGHT_PIN		PC4
+#define INPUT_LEFT_PIN		PC2
+#define INPUT_DOWN_PIN		PC5
+#define INPUT_UP_PIN		PC3
+
+#define INPUT_START_PIN		PD5
+#define INPUT_SELECT_PIN	PD6
+#define INPUT_B_PIN		PD7
+#define INPUT_A_PIN		PB0
+#define INPUT_TB_PIN		PB2
+#define INPUT_TA_PIN		PB1
 
 /* Биты нажатых кнопок */
-#define INPUT_RIGHT		((PINC & _BV(PC4)) ? 0x80 : 0)
-#define INPUT_LEFT		((PINC & _BV(PC2)) ? 0x40 : 0)
-#define INPUT_DOWN		((PINC & _BV(PC5)) ? 0x20 : 0)
-#define INPUT_UP		((PINC & _BV(PC3)) ? 0x10 : 0)
+/*																			 НАЖАТА : ОТПУЩЕННА*/
+#define INPUT_RIGHT		(( INPUT_RIGHT_PORT	&	_BV( INPUT_RIGHT_PIN	)) ? 0x80 : 0)
+#define INPUT_LEFT		(( INPUT_LEFT_PORT	&	_BV( INPUT_LEFT_PIN		)) ? 0x40 : 0)
+#define INPUT_DOWN		(( INPUT_DOWN_PORT	&	_BV( INPUT_DOWN_PIN		)) ? 0x20 : 0)
+#define INPUT_UP		(( INPUT_UP_PORT	&	_BV( INPUT_UP_PIN 		)) ? 0x10 : 0)
 
-#define INPUT_START		((PIND & _BV(PD5)) ? 0x08 : 0)
-#define INPUT_SELECT		((PIND & _BV(PD6)) ? 0x04 : 0)
-#define INPUT_B			((PIND & _BV(PD7)) ? 0x02 : 0)
-#define INPUT_A			((PINB & _BV(PB0)) ? 0x01 : 0)
+#define INPUT_START		(( INPUT_START_PORT	&	_BV( INPUT_START_PIN	)) ? 0x08 : 0)
+#define INPUT_SELECT	(( INPUT_SELECT_PORT&	_BV( INPUT_SELECT_PIN	)) ? 0x04 : 0)
+#define INPUT_B			(( INPUT_B_PORT		&	_BV( INPUT_B_PIN		)) ? 0x02 : 0)
+#define INPUT_A			(( INPUT_A_PORT		&	_BV( INPUT_A_PIN		)) ? 0x01 : 0)
 
 /* Биты кнопок Турбо B A */
-#define INPUT_TB		((PINB & _BV(PB2)) ? 0 : 0x02)
-#define INPUT_TA		((PINB & _BV(PB1)) ? 0 : 0x01)
+#define INPUT_TB		(( INPUT_TB_PORT	&	_BV( INPUT_TB_PIN		)) ? 0x02 : 0)
+#define INPUT_TA		(( INPUT_TA_PORT	&	_BV( INPUT_TA_PIN		)) ? 0x01 : 0)
 
 /* Переменные */
-volatile uint8_t shift, button_data = 0;
+volatile uint8_t shift, nes_button_data = 0;
 
 volatile uint8_t turbo_data = 0, turbo_shift = 0, turbo_pattern_shift;
 volatile uint16_t turbo_pattern = 0xA995;
@@ -34,21 +69,18 @@ volatile uint16_t turbo_pattern = 0xA995;
 /* Инициализация портов и регистров */
 void hwInit(void)
 {
-	//Все входы
-	//PB0,PB1,PB2 остальные в 0
-	PORTB	 =	0x07;
-	DDRB	 =	( 0 << PB0 ) | ( 0 << PB1 ) | ( 0 << PB2 ) |
-			( 0 << PB3 ) | ( 0 << PB4 ) | ( 0 << PB5 ) ;
+	// Инициализация портов
+	PORTB	 =	( 1 << INPUT_A_PIN ) | ( 1 << INPUT_TA_PIN ) | ( 1 << INPUT_TB_PIN );
+	DDRB	 =	( 0 << INPUT_A_PIN ) | ( 0 << INPUT_TA_PIN ) | ( 0 << INPUT_TB_PIN );
 
-	//Все входы
-	PORTC	 =	0x3C;
-	DDRC	 =	( 0 << PC0 ) | ( 0 << PC1 ) | ( 0 << PC2 ) |
-			( 0 << PC3 ) | ( 0 << PC4 ) | ( 0 << PC5 ) ;
+	PORTC	 =	( 1 << INPUT_RIGHT_PIN ) | ( 1 << INPUT_LEFT_PIN ) | ( 1 << INPUT_DOWN_PIN ) | ( 1 << INPUT_UP_PIN );
+	DDRC	 =	( 0 << INPUT_RIGHT_PIN ) | ( 0 << INPUT_LEFT_PIN ) | ( 0 << INPUT_DOWN_PIN ) | ( 0 << INPUT_UP_PIN );
 
-	PORTD	 =	0xE0;
-	DDRD	 =	( 1 << PD0 ) | ( 0 << PD1 ) | ( 0 << PD2 ) |
-			( 0 << PD3 ) | ( 0 << PD4 ) | ( 0 << PD5 ) |
-			( 0 << PD6 ) | ( 0 << PD7 );
+	PORTD	 =	( 1 << PAD_Clock_PIN ) | ( 1 << PAD_Latch_PIN ) | ( 1 << PAD_Data_PIN ) | 
+				( 1 << INPUT_START_PIN ) | ( 1 << INPUT_SELECT_PIN ) | ( 1 << INPUT_B_PIN );
+
+	DDRD	 =	( 0 << PAD_Clock_PIN	) | ( 0 << PAD_Latch_PIN ) | ( 1 << PAD_Data_PIN ) | 
+				( 0 << INPUT_START_PIN	) | ( 0 << INPUT_SELECT_PIN ) | ( 0 << INPUT_B_PIN );
 
 #if (F_CPU == 8000000L)
 	//8 МГц  предделитель 1024
@@ -78,7 +110,7 @@ void hwInit(void)
 ISR(INT0_vect)
 {
 	shift <<= 1;
-	if (button_data & shift)
+	if (nes_button_data & shift)
 		PORTD |= 1;
 	else
 		PORTD &= ~1;
@@ -89,7 +121,7 @@ ISR(INT1_vect)
 {
 	shift = 1;
 
-	if (button_data & shift)
+	if (nes_button_data & shift)
 		PORTD |= 1;
 	else
 		PORTD &= ~1;
@@ -100,7 +132,7 @@ ISR(INT1_vect)
 /* Считать нажатые кнопки */
 void buttons_read(void)
 {
-//Пропустить,  если не прошло время 4 мс ("Защита от дребезга контактов")
+//Пропустить, если не прошло время 4 мс ("Защита от дребезга контактов")
 if (bit_is_set(TIFR, OCF2))
 	{
 		// Сброс таймера отсчета
@@ -120,13 +152,13 @@ if (bit_is_set(TIFR, OCF2))
 			Счтитать нажатые кнопки
 			Right, Left, Down, Up, Start, Select, B, A
 		*/
-		button_data =	INPUT_UP	|	INPUT_DOWN	|	INPUT_LEFT	|	INPUT_RIGHT	|
+		nes_button_data =	INPUT_UP	|	INPUT_DOWN	|	INPUT_LEFT	|	INPUT_RIGHT	|
 					INPUT_B		|	INPUT_A		|
 					INPUT_START	|	INPUT_SELECT;
-		
-		/* Если нажаты кнопки турбо TB, TA */
-		if (INPUT_TB) button_data = (button_data & ~0x02) | (turbo_data & 0x02);
-		if (INPUT_TA) button_data = (button_data & ~0x01) | (turbo_data & 0x01);
+
+		/* Если нажаты кнопки TB, TA */
+		if (INPUT_TB != 0x02) nes_button_data = (nes_button_data & ~0x02) | (turbo_data & 0x02);
+		if (INPUT_TA != 0x01) nes_button_data = (nes_button_data & ~0x01) | (turbo_data & 0x01);
 	}
 }
 
@@ -145,8 +177,10 @@ int main(void)
 			/* Инверсия турбо */
 			if (turbo_shift >= 1)
 				{
-					turbo_data = ((turbo_pattern >> turbo_pattern_shift) & 0x01) * 3;
+					turbo_data = ((turbo_pattern >> turbo_pattern_shift) & 0x0001) * 3;
+					// turbo_data ^= 0x03;
 					turbo_shift = 0;
+					turbo_pattern_shift++;
 				}
 
 			if (turbo_pattern_shift >= 0x000F)
